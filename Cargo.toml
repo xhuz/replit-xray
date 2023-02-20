@@ -1,0 +1,19 @@
+[package]
+name = "replit-xray"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.69"
+cmd_lib = "1.3.0"
+nu-ansi-term = "0.46.0"
+once_cell = "1.17.1"
+regex = "1.7.1"
+reqwest = { version = "0.11.14", features = ["blocking", "json"] }
+serde = { version = "1.0.152", features = ["derive"] }
+serde_yaml = "0.9.17"
+uuid = { version = "1.3.0", features = ["v4", "fast-rng", "macro-diagnostics"] }
+zip = "0.6.4"
+openssl = { version = "0.10.45", features = ["vendored"] }

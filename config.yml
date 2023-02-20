@@ -1,0 +1,26 @@
+log:
+  log_level: info
+dns:
+  servers:
+  - https+local://8.8.8.8/dns-query
+inbounds:
+- port: 7707
+  protocol: trojan
+  settings:
+    clients:
+    - password: ''
+  stream_settings:
+    network: ws
+    ws_settings:
+      path: ''
+  sniffing:
+    enabled: true
+    dest_override:
+    - http
+    - tls
+    - quic
+outbounds:
+- protocol: freedom
+  tag: direct
+  settings:
+    domain_strategy: UseIPv4
