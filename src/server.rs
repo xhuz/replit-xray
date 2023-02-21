@@ -1,17 +1,20 @@
 use std::{
-    fs::File,
-    io::{Cursor, Read, Write},
+    fs::{self, File, Permissions},
+    io::Write,
+    os::unix::prelude::PermissionsExt,
+    process::{Child, Command},
 };
 
-use anyhow::Result;
-use cmd_lib::{run_cmd, run_fun};
-use regex::Regex;
+use anyhow::{anyhow, Result};
 use reqwest::blocking::Client;
-use serde_yaml;
+use rust_embed::RustEmbed;
 use uuid::Uuid;
-use zip::ZipArchive;
 
 use crate::config::{app::Config, server::ServerConfig};
+
+#[derive(RustEmbed)]
+#[folder = "$CARGO_MANIFEST_DIR/bin"]
+struct Assets;
 
 #[derive(Debug, PartialEq, Eq)]
 struct Version {
@@ -22,7 +25,7 @@ struct Version {
 pub struct Server {
     config: Config,
     version: Version,
-    latest_version: Version,
+    child_process: Option<Child>,
 }
 
 impl<T> From<T> for Version
@@ -44,33 +47,19 @@ impl Default for Version {
     }
 }
 
-impl Version {
-    fn empty(&self) -> bool {
-        &self.inner == ""
-    }
-}
-
 impl Server {
     pub fn new() -> Self {
-        let mut s = Server {
+        let s = Server {
             config: Config::from_env(),
             version: Version::default(),
-            latest_version: Version::default(),
+            child_process: None,
         };
-
-        s.version = s.get_current_version();
-
-        s.latest_version = s.get_latest_version();
 
         s
     }
 
-    pub fn run(&self) -> Result<()> {
-        if self.version != self.latest_version {
-            if self.download().is_err() && self.version.empty() {
-                panic!("download failed")
-            }
-        }
+    pub fn run(&mut self) -> Result<()> {
+        self.prepare()?;
 
         let uuid = self.uuid();
 
@@ -80,18 +69,29 @@ impl Server {
 
         File::create("./config.yml")?.write_all(&yaml.as_bytes())?;
 
-        let cmd = format!(
-            "{} -c config.yml",
-            &self.config.bin_path().to_string_lossy()
-        );
+        let child = Command::new(&self.config.bin_path())
+            .args(["-c", "config.yml"])
+            .spawn()?;
 
-        let path = &self.config.bin_path();
-
-        run_cmd!(chmod "+x" $path)?;
-
-        run_cmd!($cmd)?;
+        self.child_process = Some(child);
 
         self.share(&uuid);
+
+        Ok(())
+    }
+
+    fn prepare(&mut self) -> Result<()> {
+        let embed = Assets::get(&self.config.asset_name).ok_or(anyhow!("Get Embed File Failed"))?;
+
+        let mut f = File::create(&self.config.bin_path())?;
+
+        f.write_all(&embed.data.to_vec())?;
+
+        let p = Permissions::from_mode(0o755);
+
+        fs::set_permissions(&self.config.bin_path(), p)?;
+
+        self.version = self.get_version();
 
         Ok(())
     }
@@ -137,63 +137,21 @@ impl Server {
         uuid
     }
 
-    fn get_current_version(&self) -> Version {
+    fn get_version(&self) -> Version {
         let p = self.config.bin_path();
-        let result = run_fun!($p "--version").unwrap_or_default();
 
-        Version { inner: result }
-    }
+        let out = Command::new(&p)
+            .arg("--version")
+            .output()
+            .expect(&format!("exec command failed, {:?}", &p));
 
-    fn get_latest_version(&self) -> Version {
-        let url = self.config.remote_addr("latest");
-        let res = Client::new()
-            .head(url)
-            .send()
-            .expect("get latest version failed");
+        let result = String::from_utf8(out.stdout).unwrap();
 
-        let reg = Regex::new(r"[^/]+$").unwrap();
+        let a = result.split(" ").collect::<Vec<&str>>()[1];
 
-        let final_url = res.url().to_string();
-
-        println!("{final_url}");
-
-        match reg.find(&res.url().to_string()) {
-            Some(v) => Version {
-                inner: v.as_str().to_owned(),
-            },
-            None => Version::default(),
+        Version {
+            inner: format!("v{a}"),
         }
-    }
-
-    fn unzip(&self, bytes: &[u8]) -> Result<Vec<u8>> {
-        let c = Cursor::new(bytes);
-
-        let mut buf = vec![];
-
-        ZipArchive::new(c)?
-            .by_name(&self.config.name)?
-            .read_to_end(&mut buf)?;
-
-        Ok(buf)
-    }
-
-    fn download(&self) -> Result<()> {
-        let url = self.config.remote_addr(&format!(
-            "{}/download/{}/Xray-{}-64.zip",
-            self.config.base_remote_addr,
-            self.latest_version.inner,
-            std::env::consts::OS
-        ));
-
-        let res = Client::new().get(url).send()?;
-
-        let bytes = res.bytes()?;
-
-        let buf = self.unzip(&bytes)?;
-
-        File::create(&self.config.bin_path())?.write_all(&buf)?;
-
-        Ok(())
     }
 }
 
@@ -211,5 +169,15 @@ mod test {
         let matched = reg.find(url).and_then(|m| Some(m.as_str()));
 
         assert_eq!(Some("v1.7.5"), matched);
+    }
+
+    #[test]
+    fn test_match_version_from_bin() {
+        let text = r"Xray 1.7.5 (Xray, Penetrates Everything.) Custom (go1.20 linux/amd64)
+        A unified platform for anti-censorship.";
+
+        let v: Vec<&str> = text.split(" ").collect();
+
+        assert_eq!("1.7.5", v[1]);
     }
 }

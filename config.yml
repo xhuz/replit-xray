@@ -8,11 +8,11 @@ inbounds:
   protocol: trojan
   settings:
     clients:
-    - password: ''
+    - password: 2dd0e430-1650-4915-8377-81f550dff4a9
   stream_settings:
     network: ws
     ws_settings:
-      path: ''
+      path: 2dd0e430-1650-4915-8377-81f550dff4a9
   sniffing:
     enabled: true
     dest_override:

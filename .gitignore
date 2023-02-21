@@ -9,3 +9,10 @@
 .vscode
 
 .fleet
+
+bin/*
+!bin/.gitkeep
+
+config.yml
+
+x
