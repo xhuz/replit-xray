@@ -26,6 +26,7 @@ pub struct Server {
     config: Config,
     version: Version,
     child_process: Option<Child>,
+    keep_alive: Option<String>,
 }
 
 impl<T> From<T> for Version
@@ -53,6 +54,7 @@ impl Server {
             config: Config::from_env(),
             version: Version::default(),
             child_process: None,
+            keep_alive: None,
         };
 
         s
@@ -75,9 +77,32 @@ impl Server {
 
         self.child_process = Some(child);
 
+        self.keep_alive = Some(format!(
+            "{}.{}.replit.co/{}",
+            self.config.repl_slug, self.config.repl_owner, uuid
+        ));
+
         self.share(&uuid);
 
         Ok(())
+    }
+
+    pub fn keep(&self) {
+        if let Some(url) = &self.keep_alive {
+            if let Ok(res) = Client::new().get(url).send() {
+                if let Ok(t) = res.text() {
+                    println!("{t}")
+                }
+            } else {
+                println!("Bad Request")
+            }
+        }
+    }
+
+    pub fn stop(&mut self) {
+        if let Some(c) = &mut self.child_process {
+            c.kill().expect("command wasn't running");
+        }
     }
 
     fn prepare(&mut self) -> Result<()> {
