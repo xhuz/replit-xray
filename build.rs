@@ -176,7 +176,7 @@ fn main() {
         }
     } else if let Ok(v) = latest_version {
         XRAY.download(&v).unwrap();
-    } else {
-        panic!("")
+    } else if let (Err(a), Err(b)) = (current_version, latest_version) {
+        panic!("Build Error, {}, {}", a.to_string(), b.to_string())
     }
 }
