@@ -132,8 +132,6 @@ impl Xray {
             .map(|f| f.to_str().ok_or(Error::FilenameError))
             .ok_or(Error::FilenameError)??;
 
-        // let filename = filename.map_or(Ok(None), |r| Ok(r.unwrap()));
-
         ZipArchive::new(c)?
             .by_name(filename)?
             .read_to_end(&mut buf)?;

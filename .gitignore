@@ -15,4 +15,7 @@ bin/*
 
 config.yml
 
+.DS_store
+
 x
+.devcontainer.json

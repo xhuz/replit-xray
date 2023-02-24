@@ -116,6 +116,8 @@ impl Server {
 
         fs::set_permissions(&self.config.bin_path(), p)?;
 
+        drop(f);
+
         self.version = self.get_version();
 
         Ok(())
