@@ -13,9 +13,9 @@ impl Config {
     pub fn from_env() -> Self {
         let env_vars: HashMap<String, String> = env::vars().collect();
         if let (Some(db), Some(slug), Some(owner)) = (
-            env_vars.get("REPLIT_DB_URL").or(Some(&"".to_owned())),
-            env_vars.get("REPL_SLUG").or(Some(&"".to_owned())),
-            env_vars.get("REPL_OWNER").or(Some(&"".to_owned())),
+            env_vars.get("REPLIT_DB_URL"),
+            env_vars.get("REPL_SLUG"),
+            env_vars.get("REPL_OWNER"),
         ) {
             Config {
                 replit_db_url: db.to_owned(),

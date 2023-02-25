@@ -89,20 +89,22 @@ impl Xray {
     fn get_current_version(&self) -> Result<String, Error> {
         self.set_mode(0o755)?;
 
-        let result = Command::new(self.bin_path)
-            .arg("--version")
-            .output()?
-            .stdout;
+        let out = Command::new(self.bin_path).arg("--version").output()?;
 
-        let info = String::from_utf8(result)?;
+        if out.status.success() {
+            let result = out.stdout;
+            let info = String::from_utf8(result)?;
 
-        let s = info.split(" ").collect::<Vec<&str>>();
+            let s = info.split(" ").collect::<Vec<&str>>();
 
-        let mut v = "v".to_string();
+            let mut v = "v".to_string();
 
-        v.push_str(s[1]);
+            v.push_str(s[1]);
 
-        Ok(v)
+            Ok(v)
+        } else {
+            Err(Error::VersionError(String::from_utf8(out.stderr)?))
+        }
     }
 
     fn get_latest_version(&self) -> Result<String, Error> {

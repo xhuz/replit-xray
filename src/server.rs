@@ -2,7 +2,7 @@ use std::{
     fs::{self, File, Permissions},
     io::Write,
     os::unix::prelude::PermissionsExt,
-    process::{Child, Command},
+    process::{Child, Command, Stdio},
 };
 
 use anyhow::{anyhow, Result};
@@ -27,6 +27,7 @@ pub struct Server {
     version: Version,
     child_process: Option<Child>,
     keep_alive: Option<String>,
+    uuid: Option<String>,
 }
 
 impl<T> From<T> for Version
@@ -55,6 +56,7 @@ impl Server {
             version: Version::default(),
             child_process: None,
             keep_alive: None,
+            uuid: None,
         };
 
         s
@@ -67,12 +69,16 @@ impl Server {
 
         let c = ServerConfig::new(&uuid, &uuid);
 
+        println!("{:#?}", &c);
+
         let yaml = serde_yaml::to_string(&c)?;
 
         File::create("./config.yml")?.write_all(&yaml.as_bytes())?;
 
         let child = Command::new(&self.config.bin_path())
             .args(["-c", "config.yml"])
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
             .spawn()?;
 
         self.child_process = Some(child);
@@ -135,10 +141,10 @@ impl Server {
     fn get_uuid_from_replit_db(&self) -> Result<String> {
         let res = Client::new()
             .get(format!("{}/uuid", &self.config.replit_db_url))
-            .send()?;
+            .send()?
+            .error_for_status()?;
 
         let t = res.text()?;
-
         Ok(t)
     }
 
