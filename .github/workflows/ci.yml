@@ -1,90 +1,59 @@
-name: Rust
+name: CI
 
 on:
   push:
-    branches: ["master"]
+    branches:
+      - master
   pull_request:
-    branches: ["master"]
+    branches:
+      - master
 
 env:
-  CARGO_TERM_COLOR: always
+  TARGET: x86_64-unknown-linux-musl
+  NAME: replit-xray
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Cargo cache
-        uses: actions/cache@v3
+      - uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/registry
             ./target
-          key: test-cargo-registry
-      - name: List
-        run: find ./
-      - name: Run tests
-        run: cargo test --verbose
+          key: cargo-registry
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - run: cargo test --verbose
 
   build:
-    strategy:
-      fail-fast: false
-      matrix:
-        # a list of all the targets
-        include:
-          - TARGET: x86_64-unknown-linux-gnu # tested in a debian container on a mac
-            OS: ubuntu-latest
-          - TARGET: x86_64-unknown-linux-musl # test in an alpine container on a mac
-            OS: ubuntu-latest
+    runs-on: ubuntu-latest
     needs: test
-    runs-on: ${{ matrix.OS }}
-    env:
-      NAME: rust-cross-compile-example # change with the name of your project
-      TARGET: ${{ matrix.TARGET }}
-      OS: ${{ matrix.OS }}
     steps:
       - uses: actions/checkout@v3
-      - name: Cargo cache
-        uses: actions/cache@v3
+      - uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/registry
             ./target
-          key: build-cargo-registry-${{matrix.TARGET}}
-      - name: List
-        run: find ./
-      - name: Install rust target
-        run: rustup target add $TARGET
-      - name: Run build
-        run: cargo build --release --verbose --target $TARGET
-      - name: List target
-        run: find ./target
-      - name: Compress
-        run: |
-          mkdir -p ./artifacts
-          mv ./target/$TARGET/release/$NAME ./$NAME
-          tar -czf ./artifacts/$NAME-$TARGET-$TAG.tar.gz $NAME
-      - name: Archive artifact
-        uses: actions/upload-artifact@v3
+          key: cargo-registry
+      - uses: actions-rs/toolchain@v1
         with:
-          name: result
-          path: |
-            ./artifacts
-
-  # deploys to github releases on tag
-  deploy:
-    if: startsWith(github.ref, 'refs/tags/')
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download artifacts
-        uses: actions/download-artifact@v3
+          toolchain: stable
+          target: $TARGET
+          override: true
+      - uses: actions-rs/cargo@v1
         with:
-          name: result
-          path: ./artifacts
-      - name: List
-        run: find ./artifacts
-      - name: Release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: ./artifacts/*.tar.gz
+          use-cross: true
+          command: build
+          args: --target $TARGET
+      - run: |
+          ls -al
+          ls -al $TARGET
+      - run: |
+          mkdir ./artifacts
+          mv ./target/$TARGET/release/$NAME ./artifacts
+          tar -czf ./artifacts/$NAME-$TARGET.tar.gz ./artifacts/$NAME
+          pwd
