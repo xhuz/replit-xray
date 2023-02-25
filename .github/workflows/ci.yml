@@ -29,13 +29,13 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-          target: "$TARGET"
+          target: $INPUT_TARGET
           override: true
       - uses: actions-rs/cargo@v1
         with:
           use-cross: true
           command: build
-          args: --target $TARGET
+          args: --target $INPUT_TARGET
       - run: |
           ls -al
           ls -al $TARGET
