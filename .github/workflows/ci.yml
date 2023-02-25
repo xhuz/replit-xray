@@ -30,10 +30,7 @@ jobs:
         with:
           use-cross: true
           command: build
-          args: --target x86_64-unknown-linux-musl
-      - run: |
-          ls -al
-          ls -al ./target/x86_64-unknown-linux-musl
+          args: --release --target x86_64-unknown-linux-musl
       - run: |
           mkdir ./artifacts
           mv ./target/x86_64-unknown-linux-musl/release/replit-xray ./artifacts
