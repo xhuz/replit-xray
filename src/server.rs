@@ -69,8 +69,6 @@ impl Server {
 
         let c = ServerConfig::new(&uuid, &uuid);
 
-        println!("{:#?}", &c);
-
         let yaml = serde_yaml::to_string(&c)?;
 
         File::create("./config.yml")?.write_all(&yaml.as_bytes())?;
