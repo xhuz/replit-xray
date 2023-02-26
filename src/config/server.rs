@@ -90,7 +90,9 @@ impl ServerConfig {
                 },
                 stream_settings: StreamSettings {
                     network: "ws".to_owned(),
-                    ws_settings: WsSettings { path: path.into() },
+                    ws_settings: WsSettings {
+                        path: format!("/{}", path.into()),
+                    },
                 },
                 sniffing: Sniffing {
                     enabled: true,

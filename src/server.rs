@@ -26,8 +26,8 @@ pub struct Server {
     config: Config,
     version: Version,
     child_process: Option<Child>,
-    keep_alive: Option<String>,
     uuid: Option<String>,
+    keep_url: Option<String>,
 }
 
 impl<T> From<T> for Version
@@ -51,15 +51,13 @@ impl Default for Version {
 
 impl Server {
     pub fn new() -> Self {
-        let s = Server {
+        Server {
             config: Config::from_env(),
             version: Version::default(),
             child_process: None,
-            keep_alive: None,
             uuid: None,
-        };
-
-        s
+            keep_url: None,
+        }
     }
 
     pub fn run(&mut self) -> Result<()> {
@@ -81,24 +79,26 @@ impl Server {
 
         self.child_process = Some(child);
 
-        self.keep_alive = Some(format!(
+        self.keep_url = Some(format!(
             "{}.{}.replit.co/{}",
             self.config.repl_slug, self.config.repl_owner, uuid
         ));
 
-        self.share(&uuid);
+        self.uuid = Some(uuid);
+
+        self.share();
 
         Ok(())
     }
 
     pub fn keep(&self) {
-        if let Some(url) = &self.keep_alive {
+        if let Some(url) = &self.keep_url {
             if let Ok(res) = Client::new().get(url).send() {
-                if let Ok(t) = res.text() {
-                    println!("{t}")
+                if let Ok(_) = res.text() {
+                    todo!()
                 }
             } else {
-                println!("Bad Request")
+                todo!()
             }
         }
     }
@@ -127,13 +127,13 @@ impl Server {
         Ok(())
     }
 
-    fn share(&self, uuid: &str) {
-        let share_url = format!(
-            "{}.{}.replit.co/{}",
-            self.config.repl_slug, self.config.repl_owner, uuid
-        );
-
-        println!("{share_url}")
+    fn share(&self) {
+        if let Some(url) = &self.keep_url {
+            println!("keep alive url: {}", url)
+        }
+        if let Some(uuid) = &self.uuid {
+            println!("password: {}", uuid);
+        }
     }
 
     fn get_uuid_from_replit_db(&self) -> Result<String> {
@@ -149,7 +149,8 @@ impl Server {
     fn set_uuid_to_replit_db(&self, uuid: &Uuid) -> Result<()> {
         Client::new()
             .post(format!("{}/uuid={}", &self.config.replit_db_url, uuid))
-            .send()?;
+            .send()?
+            .error_for_status()?;
 
         Ok(())
     }
@@ -160,7 +161,7 @@ impl Server {
             Err(_) => {
                 let u = Uuid::new_v4();
                 self.set_uuid_to_replit_db(&u)
-                    .expect_err("write uuid to db failed");
+                    .expect("write uuid to db failed");
                 u.to_string()
             }
         };
@@ -188,20 +189,6 @@ impl Server {
 
 #[cfg(test)]
 mod test {
-
-    use regex::Regex;
-
-    #[test]
-    fn test_match_version() {
-        let reg = Regex::new(r"[^/]+$").unwrap();
-
-        let url = "https://github.com/XTLS/Xray-core/releases/tag/v1.7.5";
-
-        let matched = reg.find(url).and_then(|m| Some(m.as_str()));
-
-        assert_eq!(Some("v1.7.5"), matched);
-    }
-
     #[test]
     fn test_match_version_from_bin() {
         let text = r"Xray 1.7.5 (Xray, Penetrates Everything.) Custom (go1.20 linux/amd64)
