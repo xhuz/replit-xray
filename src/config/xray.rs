@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
-pub struct ServerConfig {
+pub struct XrayConfig {
     log: Log,
     dns: Dns,
     inbounds: Vec<Inbound>,
@@ -71,9 +71,9 @@ struct WsSettings {
     path: String,
 }
 
-impl ServerConfig {
+impl XrayConfig {
     pub fn new<T: Into<String>>(uuid: T, path: T) -> Self {
-        ServerConfig {
+        XrayConfig {
             log: Log {
                 log_level: "info".to_owned(),
             },

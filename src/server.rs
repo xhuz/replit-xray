@@ -10,7 +10,7 @@ use reqwest::blocking::Client;
 use rust_embed::RustEmbed;
 use uuid::Uuid;
 
-use crate::config::{app::Config, server::ServerConfig};
+use crate::config::{app::Config, xray::XrayConfig};
 
 #[derive(RustEmbed)]
 #[folder = "$CARGO_MANIFEST_DIR/bin"]
@@ -65,14 +65,21 @@ impl Server {
 
         let uuid = self.uuid();
 
-        let c = ServerConfig::new(&uuid, &uuid);
+        let config = XrayConfig::new(&uuid, &uuid);
 
-        let yaml = serde_yaml::to_string(&c)?;
+        let json = serde_json::to_string(&config)?;
 
-        File::create("./config.yml")?.write_all(&yaml.as_bytes())?;
+        // File::create("./config.yml")?.write_all(&yaml.as_bytes())?;
+
+        let mut echo_output_child = Command::new("echo")
+            .arg(&json)
+            .stdout(Stdio::piped())
+            .spawn()?;
+
+        let echo_stdout = echo_output_child.stdout.take().expect("not found config");
 
         let child = Command::new(&self.config.bin_path())
-            .args(["-c", "config.yml"])
+            .stdin(echo_stdout)
             .stdout(Stdio::null())
             .stderr(Stdio::null())
             .spawn()?;
@@ -94,11 +101,8 @@ impl Server {
     pub fn keep(&self) {
         if let Some(url) = &self.keep_url {
             if let Ok(res) = Client::new().get(url).send() {
-                if let Ok(_) = res.text() {
-                    todo!()
-                }
+                if let Ok(_) = res.text() {}
             } else {
-                todo!()
             }
         }
     }
