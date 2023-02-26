@@ -19,18 +19,18 @@ struct Dns {
 }
 
 #[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct Inbound {
     port: i64,
     protocol: String,
     settings: InBoundSettings,
-    #[serde(alias = "streamSettings")]
     stream_settings: StreamSettings,
     sniffing: Sniffing,
 }
 
 #[derive(Serialize, Deserialize)]
 struct Log {
-    #[serde(alias = "domainStrategy")]
+    #[serde(rename = "loglevel")]
     log_level: String,
 }
 
@@ -47,22 +47,22 @@ struct InBoundSettings {
 }
 
 #[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct OutBoundSettings {
-    #[serde(alias = "domainStrategy")]
     domain_strategy: String,
 }
 
 #[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct Sniffing {
     enabled: bool,
-    #[serde(alias = "destOverride")]
     dest_override: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct StreamSettings {
     network: String,
-    #[serde(alias = "wsSettings")]
     ws_settings: WsSettings,
 }
 
@@ -107,5 +107,32 @@ impl XrayConfig {
                 },
             }],
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+
+    use super::XrayConfig;
+    use serde_json;
+
+    const JSON: &str = r#"
+    {"log":{"loglevel":"info"},"dns":{"servers":["https+local://8.8.8.8/dns-query"]},"inbounds":[{"port":7707,"protocol":"trojan","settings":{"clients":[{"password":"123"}]},"streamSettings":{"network":"ws","wsSettings":{"path":"/123"}},"sniffing":{"enabled":true,"destOverride":["http","tls","quic"]}}],"outbounds":[{"protocol":"freedom","tag":"direct","settings":{"domainStrategy":"UseIPv4"}}]}
+    "#;
+
+    #[test]
+    fn test_serialize() {
+        let x = XrayConfig::new("123", "123");
+
+        let json = serde_json::to_string(&x).unwrap();
+
+        assert_eq!(json, JSON.trim())
+    }
+
+    #[test]
+    fn test_deserialize() {
+        let c = serde_json::from_str::<XrayConfig>(JSON);
+
+        assert!(c.is_ok());
     }
 }

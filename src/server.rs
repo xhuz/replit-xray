@@ -69,8 +69,6 @@ impl Server {
 
         let json = serde_json::to_string(&config)?;
 
-        // File::create("./config.yml")?.write_all(&yaml.as_bytes())?;
-
         let mut echo_output_child = Command::new("echo")
             .arg(&json)
             .stdout(Stdio::piped())
