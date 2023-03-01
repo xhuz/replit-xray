@@ -85,7 +85,7 @@ impl Server {
         self.child_process = Some(child);
 
         self.keep_url = Some(format!(
-            "{}.{}.replit.co/{}",
+            "{}.{}.repl.co/{}",
             self.config.repl_slug, self.config.repl_owner, uuid
         ));
 
